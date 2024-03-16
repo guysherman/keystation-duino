@@ -1,5 +1,7 @@
 // Copyright Guy Sherman 2024
 
+#include <ardumidi.h>
+
 #define COUNTER_TYPE unsigned int
 const byte NUM_GROUPS = 8;
 const byte WRAP_MASK = NUM_GROUPS-1;
@@ -19,7 +21,7 @@ COUNTER_TYPE MASKS[2] = { 0x0, 0xFFFF };
 
 void setup() {
   pinMode(12, OUTPUT);
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   for (byte i = 0; i < NUM_GROUPS; i++) {
     pinMode(GROUP_PINS[i], OUTPUT);    
@@ -67,53 +69,30 @@ void loop() {
 
 
     
-    /*
-    COUNTER_TYPE c0 = 0;
-    if (sw0 == 0x0) { 
-      c0 = 0;
-    } else if (edge0 == 0xFFFF) {
-      c0 = c;
-    } else {
-      c0 = COUNTERS[sw0_idx];
-    }
 
-    COUNTER_TYPE c1 = 0;
-    if (sw1 == 0x0) {
-      c1 = c0;
-    } else if (edge1 == 0xFFFF) {
-      c1 = c;
-    } else {
-      c1 = COUNTERS[sw1_idx];
-    }
-    */
-
-    /**/
     COUNTER_TYPE c0 = (COUNTERS[sw0_idx] & ~edge0) // prior if not at edge else 0       
                           | (c & edge0 & sw0);  // curr at rising edge else 0
     
     COUNTER_TYPE c1 = (COUNTERS[sw1_idx] & ~edge1 & sw1) // prior if not at edge and high else 0       
                           | (c & edge1 & sw1) // curr at rising edge else 0
                           | (c0 & ~sw1); //  counter for sw0 if low
-                          /**/
 
     COUNTER_TYPE delta = c1 - c0;
 
-    /*
-    if (sw0 == 0xFFFF) {
-      print_event(curr_group, i, delta, key_num(curr_group, i), "S0", c0, COUNTERS[sw0_idx], c1, COUNTERS[sw1_idx]);
-
-    }
-    */
+    
+    byte velocity = 0x7F - ((delta & 0x03FF) >> 3);
 
     if (delta > DELTAS[d_idx]) {
       // note on
-      print_event(curr_group, i, delta, key_num(curr_group, i), "ON", c0, COUNTERS[sw0_idx], c1, COUNTERS[sw1_idx]);
+      //print_event(curr_group, i, delta, velocity, midi_note(key_num(curr_group, i), 0), "ON", c0, COUNTERS[sw0_idx], c1, COUNTERS[sw1_idx]);
+      midi_note_on(0, midi_note(key_num(curr_group, i), 0), velocity);
       
     } else if (delta < DELTAS[d_idx]) {
       // note off
       //int chars = printf(&buf[0], "OF:%d:%d:%d", curr_group, i, delta);
       //Serial.println(buf);
-      print_event(curr_group, i, delta, key_num(curr_group, i), "OF", c0, COUNTERS[sw0_idx], c1, COUNTERS[sw1_idx]);
+      //print_event(curr_group, i, delta, velocity, midi_note(key_num(curr_group, i), 0), "OF", c0, COUNTERS[sw0_idx], c1, COUNTERS[sw1_idx]);
+      midi_note_off(0, midi_note(key_num(curr_group, i), 0), velocity);
     }
 
     DELTAS[d_idx] = delta;
@@ -121,14 +100,12 @@ void loop() {
     SWITCHES[sw1_idx] = sw1;
     COUNTERS[sw0_idx] = c0;
     COUNTERS[sw1_idx] = c1;
-
-    //int chars = printf(buf, "%d:%d:%d", curr_group, i, delta);
-    
   }
 
-
-
-
+ //midi_note_on(0, 36, 64);
+ //delay(1000);
+ //midi_note_off(0, 36, 64);
+ //delay(1000);
 
 
   c++;
@@ -144,12 +121,13 @@ byte delta_index(byte group, byte collector) {
   return ((group << 3) - group) + collector;
 }
 
-void print_event(byte group, byte collector, COUNTER_TYPE delta, byte key, const char* event, COUNTER_TYPE c0, COUNTER_TYPE prior_c0, COUNTER_TYPE c1, COUNTER_TYPE prior_c1) {
+void print_event(byte group, byte collector, COUNTER_TYPE delta, byte velocity, byte key, const char* event, COUNTER_TYPE c0, COUNTER_TYPE prior_c0, COUNTER_TYPE c1, COUNTER_TYPE prior_c1) {
     Serial.print(event); Serial.print(":");
     Serial.print(curr_group); Serial.print(":");
     Serial.print(collector); Serial.print(":");
     Serial.print(key); Serial.print(":");
     Serial.print(delta); Serial.print(":");
+    Serial.print(velocity); Serial.print(":");
     Serial.print(c0); Serial.print(":");
     Serial.print(prior_c0); Serial.print(":");
     Serial.print(c1); Serial.print(":");
@@ -161,4 +139,8 @@ void print_event(byte group, byte collector, COUNTER_TYPE delta, byte key, const
 byte key_num(byte group, byte collector) {
   //return (collector * NUM_GROUPS) + group;
   return (collector << 3) + group;
+}
+
+byte midi_note(byte key_num, byte offset) {
+  return (36 + (offset * 12)) + key_num;
 }

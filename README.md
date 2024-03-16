@@ -2,9 +2,21 @@
 
 An ardino sketch to replace the micro-controller in the M-Audio Keystation 49 with an arudino (cause my one died).
 
-Currently have the basis of a velocity-sensing key matrix implemented. Haven't got on to writing midi events yet.
-Originally planned to use a MEGA 2560, but they are a pain for midi, so contemplating updating to either a Due or
-a GIGA, but I might just start with ttyMIDI first and see where I get to.
+#### Working
+* Currently have the basis of a velocity-sensing key matrix implemented. 
+* Turn key timings into velocity in the range 0..127
+* Sends midi note-on/note-off events
+
+#### ToDo
+* circuit board adaptor to get all keys working
+* pitch wheel
+* mod wheel
+* volume slider
+* Octave buttons
+
+#### Maybe ToDo
+* Send USB Midi _and_ standard midi over one of the other UARTs so that (for example) it could connect to a raspberry pi directly instead of over usb
+* Maaaaybeee re-write in rust if the Due is fast enough
 
 
 
